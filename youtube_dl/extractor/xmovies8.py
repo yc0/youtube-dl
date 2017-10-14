@@ -69,11 +69,10 @@ class XMovies8IE(InfoExtractor):
         https?://(?:www\.)?xmovies8\.(?:tv|es)/movie/
         (?P<id>[a-zA-Z\-\.0-9]+)/?
         (?P<isWatching>watching)?
-        (?:\.html)?
+        (?:\.html)?.*
         '''
-    _TEST = {
+    _TESTS = [{
         'url': 'https://xmovies8.es/movie/the-hitman-s-bodyguard-2017.58852',
-
         # 'md5': 'TODO: md5 sum of the first 10241 bytes of the video file (use --test)',
         'md5': 'f72c89fe7ecc14c1b5ce506c4996046e',
         'info_dict': {
@@ -99,7 +98,19 @@ class XMovies8IE(InfoExtractor):
         'params': {
             'skip_download': True,
         }
-    }
+    },{
+        'url': 'https://xmovies8.es/movie/mr-robot-season3-2017/watching.html?episode_id=107266',
+        'info_dict': {
+            'id': '30491',
+            'title': "Mr. Robot - Season 3 (2017)",
+            'ext': 'mp4',
+            'description': 'Follows Elliot, a young programmer working as a cyber-security engineer by day, and a vigilante hacker by night.',
+            'thumbnail': 'https://img.xmovies88.stream/crop/215/310/media/imagesv2/2017/10/mr-robot-season-3-2017.jpg'
+        },
+        'params': {
+            'skip_download': True,
+        }
+    }]
 
     def _extract_all(self, txt, rules, pos=0, values=None):
         """Calls extract for each rule and returns the result in a dict"""
@@ -163,8 +174,9 @@ class XMovies8IE(InfoExtractor):
             ('key', '"', '"'),
             ('expr', ':', '}')
         ))
-        solution = evaluate_expression(data["expr"])
-        variable = "{}.{}".format(data["var"], data["key"])
+        solution = evaluate_expression(data.get("expr"))
+        # variable = "{}.{}".format(data.get("var"), data.get("key"))
+        variable = data.get("var") + "." + data.get("key")
         vlength = len(variable)
         expressions = self._extract(page, "'challenge-form');", "f.submit();", pos)[0]
         for expr in expressions.split(";")[1:]:
