@@ -50,7 +50,9 @@ class M4ufreeIE(InfoExtractor):
     }]
 
     def _retrieve_url(self, video_id, web):
+        web = re.sub(r'([^"|^\'])(file|type|label)([^"|^\'])',r'\g<1>"\g<2>"\g<3>',web)
         web = re.sub(r"'", "\"", web)
+        # self.to_screen(web)
         if re.search(r'src="https://openload.co/embed', web):
             url = self._html_search_regex(
                 r'iframe[^s]+src="(?P<url>[^"]+)"',
@@ -82,7 +84,7 @@ class M4ufreeIE(InfoExtractor):
                     extra)
             json = self._parse_json(extra, video_id, fatal=True)
         self._validate(json)
-        return json if self._request_webpage(
+        return json if json[-1].get('file') and self._request_webpage(
             json[-1].get('file'), video_id, note='Requesting source file',
             errnote='Unable to request source file', fatal=False) else []
 
@@ -168,7 +170,6 @@ class M4ufreeIE(InfoExtractor):
                     'Referer': url,
                 }, fatal=False)
             json += self._retrieve_url(video_id, webpage2)
-
         json.sort(key=lambda d: (
             int(d.get('label').replace('p', '')), len(d.get('file'))))
 
