@@ -82,7 +82,9 @@ class M4ufreeIE(InfoExtractor):
                     r'([{|,])\s*([^"]?\w+[^"]?):',
                     r'\g<1>"\g<2>":',
                     extra)
-            json = self._parse_json(extra, video_id, fatal=True)
+        except TypeError as ee:
+            self.to_screen(ee)
+            return []
         self._validate(json)
         return json if json[-1].get('file') and self._request_webpage(
             json[-1].get('file'), video_id, note='Requesting source file',
