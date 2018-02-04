@@ -559,6 +559,7 @@ from .lynda import (
     LyndaIE,
     LyndaCourseIE
 )
+from .m4ufree import M4ufreeIE
 from .m6 import M6IE
 from .macgamestore import MacGameStoreIE
 from .mailru import MailRuIE
