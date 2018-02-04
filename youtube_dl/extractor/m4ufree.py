@@ -6,7 +6,9 @@ import codecs
 from .common import InfoExtractor
 from ..utils import (
     ExtractorError,
-    urlencode_postdata
+    urlencode_postdata,
+    unsmuggle_url,
+    std_headers
 )
 
 
@@ -20,6 +22,7 @@ def unicode_escape(s):
 
 class M4ufreeIE(InfoExtractor):
     IE_NAME = 'm4ufree'
+    _USER_AGENT = 'Mozilla/5.0 (X11; Linux i686; rv:47.0) Gecko/20100101 Firefox/47.0'
     _VALID_URL = r'''(?x)
                     https?://
                         (?:
@@ -49,7 +52,7 @@ class M4ufreeIE(InfoExtractor):
         'only_matching': True
     }]
 
-    def _retrieve_url(self, video_id, web):
+    def _retrieve_url(self, video_id, web, _url):
         web = re.sub(r'([^"|^\'])(file|type|label)([^"|^\'])',r'\g<1>"\g<2>"\g<3>',web)
         web = re.sub(r"'", "\"", web)
         # self.to_screen(web)
@@ -57,6 +60,8 @@ class M4ufreeIE(InfoExtractor):
             url = self._html_search_regex(
                 r'iframe[^s]+src="(?P<url>[^"]+)"',
                 web, 'openload url retrieve', default=None, group='url')
+            headers = std_headers
+            headers['Referer'] = url
             return [{'file': url, 'label': '720p'}]
         if re.search(r'src="https://drive.google', web):
             return []
@@ -85,10 +90,16 @@ class M4ufreeIE(InfoExtractor):
         except TypeError as ee:
             self.to_screen(ee)
             return []
+
         self._validate(json)
         return json if json[-1].get('file') and self._request_webpage(
             json[-1].get('file'), video_id, note='Requesting source file',
-            errnote='Unable to request source file', fatal=False) else []
+            errnote='Unable to request source file', headers={
+                'Referer': _url,
+                'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+                'Range' : 'bytes=0-',
+                'Accept-Encoding':'identity;q=1, *;q=0'
+            }, fatal=False) else []
 
     def _validate(self, j):
         s = j[-1].get('file')
@@ -98,8 +109,19 @@ class M4ufreeIE(InfoExtractor):
                                        r'https://m4ufree.co/\g<1>', s)
 
     def _real_extract(self, url):
-        video_id = self._match_id(url)
+        url, data = unsmuggle_url(url, {})
+        headers = std_headers
+        # if 'http_headers' in data:
+        #     headers = headers.copy()
+        #     headers.update(data['http_headers'])
+        if 'Referer' not in headers:
+            headers['Referer'] = url
+            headers['Range'] = 'bytes=0-'
+            headers['User-Agent'] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
+            headers['Accept-Encoding'] = 'identity;q=1, *;q=0'
 
+        
+        video_id = self._match_id(url)
         webpage = self._download_webpage(
             'http://m4ufree.com/%s.html' % video_id, video_id)
 
@@ -171,7 +193,8 @@ class M4ufreeIE(InfoExtractor):
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'Referer': url,
                 }, fatal=False)
-            json += self._retrieve_url(video_id, webpage2)
+            # print(webpage2)
+            json += self._retrieve_url(video_id, webpage2, url)
         json.sort(key=lambda d: (
             int(d.get('label').replace('p', '')), len(d.get('file'))))
 
@@ -184,7 +207,7 @@ class M4ufreeIE(InfoExtractor):
         if not json:
             errmsg = '%s: Failed to get a movie ' % video_id
             raise ExtractorError(errmsg)
-        print(json)
+        # print(json)
         formats = [{
             'url': unicode_escape(json[-1].get('file')),
             'ext': 'mp4'
